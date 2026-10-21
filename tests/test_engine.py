@@ -13,3 +13,8 @@ def test_snapshot_bytes_reopen():
 def test_reorder_duplicate_blank_extract():
  p=make();d=e.open_document(p);e.duplicate_page(d,0);assert d.page_count==2;e.reorder_pages(d,[1,0]);e.insert_blank_page(d,0);assert d.page_count==3
  out=p+'.extract.pdf';e.extract_pages(d,[0,2],out);x=pymupdf.open(out);assert x.page_count==2;x.close();d.close();os.remove(p);os.remove(out)
+def test_annotations_and_redaction():
+ p=make();d=e.open_document(p);s=e.text_spans(d[0])[0];e.annotate_span(d,0,s,'highlight');assert d[0].first_annot is not None
+ e.annotate_span(d,0,s,'underline');e.annotate_span(d,0,s,'strikeout');e.add_comment(d,0,(20,20),'Review note');assert d[0].first_annot is not None;d.close();os.remove(p)
+def test_permanent_redaction():
+ p=make();d=e.open_document(p);s=e.text_spans(d[0])[0];e.annotate_span(d,0,s,'redact');assert 'Hello world' not in d[0].get_text();d.close();os.remove(p)

@@ -41,7 +41,7 @@ class ImageDialog(QDialog):
 
 class Main(QMainWindow):
  def __init__(self):
-  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.2.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[]
+  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.3.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[];self.mode='edit'
   self.build_toolbar();self.build_ui();self.setStatusBar(QStatusBar());self.statusBar().showMessage('Open a PDF to begin')
  def action(self,bar,name,key,fn):
   a=QAction(name,self);a.setShortcut(QKeySequence(key));a.triggered.connect(fn);bar.addAction(a);return a
@@ -50,7 +50,7 @@ class Main(QMainWindow):
  def build_ui(self):
   root=QSplitter();self.setCentralWidget(root)
   tools=QWidget();tools.setFixedWidth(220);v=QVBoxLayout(tools);head=QLabel('TOOLS');head.setStyleSheet('font-weight:700');v.addWidget(head)
-  for label,fn in [('Edit existing text',self.edit_mode),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Duplicate current page',self.duplicate),('Extract selected pages',self.extract),('Insert blank page',self.blank),('Insert PDF after page',self.insert_pdf),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
+  for label,fn in [('Edit existing text',lambda:self.set_mode('edit')),('Highlight text',lambda:self.set_mode('highlight')),('Underline text',lambda:self.set_mode('underline')),('Strike out text',lambda:self.set_mode('strikeout')),('Permanently redact text',lambda:self.set_mode('redact')),('Add comment to page',self.add_comment),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Duplicate current page',self.duplicate),('Extract selected pages',self.extract),('Insert blank page',self.blank),('Insert PDF after page',self.insert_pdf),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
    btn=QPushButton(label);btn.clicked.connect(fn);v.addWidget(btn)
   v.addStretch();hint=QLabel('Existing text: double-click the exact text. PeaBox preserves its size and rejects replacements that do not fit.');hint.setWordWrap(True);hint.setObjectName('hint');v.addWidget(hint);root.addWidget(tools)
   self.thumbs=QListWidget();self.thumbs.setFixedWidth(190);self.thumbs.setSelectionMode(QAbstractItemView.ExtendedSelection);self.thumbs.setDragDropMode(QAbstractItemView.InternalMove);self.thumbs.setDefaultDropAction(Qt.MoveAction);self.thumbs.currentRowChanged.connect(self.goto);self.thumbs.model().rowsMoved.connect(self.pages_reordered);root.addWidget(self.thumbs)
@@ -88,13 +88,29 @@ class Main(QMainWindow):
  def render(self):
   if not self.doc:return
   data,w,h=engine.render_page(self.doc,self.page,self.zoom);self.scene.clear();self.scene.setSceneRect(0,0,w,h);self.scene.addPixmap(QPixmap.fromImage(QImage.fromData(data)))
-  for s in engine.text_spans(self.doc[self.page]):self.scene.addItem(SpanItem(s,self.replace,self.zoom))
-  self.page_label.setText(f'Page {self.page+1} of {self.doc.page_count}');self.zoom_label.setText(f'{round(self.zoom*100)}%');self.info.setText(f'{Path(self.path).name}\n\nPages: {self.doc.page_count}\nCurrent page: {self.page+1}\nZoom: {round(self.zoom*100)}%')
+  for s in engine.text_spans(self.doc[self.page]):self.scene.addItem(SpanItem(s,self.activate_span,self.zoom))
+  self.page_label.setText(f'Page {self.page+1} of {self.doc.page_count}');self.zoom_label.setText(f'{round(self.zoom*100)}%');self.info.setText(f'{Path(self.path).name}\n\nPages: {self.doc.page_count}\nCurrent page: {self.page+1}\nZoom: {round(self.zoom*100)}%\nMode: {self.mode.capitalize()}')
  def goto(self,i):
   if self.doc and 0<=i<self.doc.page_count:self.page=i
   if self.doc and self.thumbs.currentRow()!=i:self.thumbs.blockSignals(True);self.thumbs.setCurrentRow(i);self.thumbs.blockSignals(False)
   if self.doc:self.render()
- def edit_mode(self):self.statusBar().showMessage('Double-click the exact existing text you want to correct')
+ def set_mode(self,mode):
+  self.mode=mode
+  labels={'edit':'Double-click existing text to edit','highlight':'Double-click text to highlight','underline':'Double-click text to underline','strikeout':'Double-click text to strike out','redact':'Double-click text to permanently redact'}
+  self.statusBar().showMessage(labels.get(mode,'Ready'));self.render()
+ def edit_mode(self):self.set_mode('edit')
+ def activate_span(self,span):
+  if self.mode=='edit':self.replace(span);return
+  if self.mode=='redact' and QMessageBox.warning(self,'Permanent redaction','This permanently removes the selected text. Continue?',QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
+  self.snapshot()
+  try:engine.annotate_span(self.doc,self.page,span,self.mode);self.changed(self.mode.capitalize()+' applied')
+  except Exception as e:self.undo_stack.pop();self.update_history();QMessageBox.warning(self,'Annotation failed',str(e))
+ def add_comment(self):
+  if not self.doc:return
+  text,ok=QInputDialog.getMultiLineText(self,'Add comment','Comment text:')
+  if not ok or not text.strip():return
+  self.snapshot();r=self.doc[self.page].rect;engine.add_comment(self.doc,self.page,(r.width-36,36),text);self.changed('Comment added at top-right')
+
  def replace(self,s):
   d=TextDialog('Replace existing text',s['text'],s['size'],self,True)
   if d.exec()!=QDialog.Accepted:return

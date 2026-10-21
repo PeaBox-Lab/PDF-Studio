@@ -1,30 +1,39 @@
-# PeaBox PDF Studio Desktop v1.2.0
+# PeaBox PDF Studio Desktop v1.3.0
 
-A local-first native PDF editor built with Python, PySide6 and PyMuPDF.
+A local-first native PDF editor and annotation workspace built with Python, PySide6 and PyMuPDF.
 
-## Highlights
+## v1.3 highlights
 
-### Editing
-- Correct existing text without automatic font shrinking
-- Add new text
-- Add images and signature images
-- 20-step undo/redo
-- Fit Page, 100%, zoom in/out
+### Review and annotation tools
+- Highlight detected PDF text
+- Underline detected PDF text
+- Strike out detected PDF text
+- Permanently redact selected text
+- Add a sticky-note comment to the current page
+- Every annotation or redaction participates in Undo/Redo
 
-### Page workspace
-- Page thumbnails
-- Drag thumbnails to reorder pages
-- Multi-select thumbnails with Ctrl/Shift
-- Duplicate the current page
-- Extract selected pages to a new PDF
-- Insert a blank page after the current page
-- Insert another PDF after the current page
-- Rotate or delete pages
+### How to annotate
+1. Open a PDF.
+2. Choose **Highlight text**, **Underline text**, **Strike out text**, or **Permanently redact text**.
+3. Hover over the exact text span.
+4. Double-click the text.
+5. Save the edited PDF with `Ctrl+Shift+S`.
+
+Redaction is permanent after saving. PeaBox asks for confirmation and removes the selected text content instead of merely drawing a black rectangle over it.
+
+## Existing features
+- Existing-text correction without automatic font shrinking
+- Add new text, images and signature images
+- 20-step Undo/Redo
+- Fit Page, 100%, Zoom In and Zoom Out
+- Page thumbnails and drag-and-drop reordering
+- Duplicate, extract, delete, rotate and insert pages
+- Insert blank pages and complete PDFs
 - Merge PDF files
 
 ## Installation
 
-On Windows, extract the ZIP and double-click `run_windows.bat`.
+Extract the ZIP and double-click `run_windows.bat`.
 
 Manual installation:
 
@@ -34,16 +43,3 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 python app.py
 ```
-
-## Page management guide
-
-- **Reorder:** drag a page thumbnail to a new position.
-- **Select several pages:** hold Ctrl while selecting thumbnails, or Shift for a range.
-- **Extract:** select pages and choose `Extract selected pages`.
-- **Duplicate:** navigate to a page and choose `Duplicate current page`.
-- **Blank page:** inserts a same-size blank page directly after the current page.
-- **Insert PDF:** appends every page of the selected PDF directly after the current page.
-
-## Safe text editing
-
-Existing-text replacement keeps the detected original font size. PeaBox rejects replacement text that cannot fit the original area rather than silently shrinking it or changing nearby layout.

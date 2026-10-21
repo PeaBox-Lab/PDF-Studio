@@ -71,3 +71,26 @@ def insert_pdf_after(doc,after_index,path):
  other=pymupdf.open(path)
  try:doc.insert_pdf(other,start_at=after_index+1)
  finally:other.close()
+
+def annotate_span(doc,page_index,span,kind):
+ page=doc[page_index]
+ rect=pymupdf.Rect(*span['rect'])
+ if kind=='highlight':
+  annot=page.add_highlight_annot(rect);annot.set_colors(stroke=(1,0.82,0));annot.set_opacity(0.42);annot.update()
+ elif kind=='underline':
+  annot=page.add_underline_annot(rect);annot.set_colors(stroke=(0.1,0.35,0.9));annot.update()
+ elif kind=='strikeout':
+  annot=page.add_strikeout_annot(rect);annot.set_colors(stroke=(0.85,0.12,0.12));annot.update()
+ elif kind=='redact':
+  page.add_redact_annot(rect,fill=(0,0,0));page.apply_redactions(images=0,graphics=0);annot=None
+ else:raise ValueError('Unsupported annotation type')
+ return annot
+
+def add_comment(doc,page_index,point,text):
+ if not text.strip():raise ValueError('Comment cannot be empty')
+ annot=doc[page_index].add_text_annot(pymupdf.Point(*point),text)
+ annot.set_info(title='PeaBox PDF Studio',subject='Comment')
+ annot.update();return annot
+
+def add_rectangle(doc,page_index,rect,color=(0.1,0.35,0.9),width=1.5):
+ annot=doc[page_index].add_rect_annot(pymupdf.Rect(*rect));annot.set_colors(stroke=color);annot.set_border(width=width);annot.update();return annot
