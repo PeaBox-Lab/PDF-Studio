@@ -1,42 +1,36 @@
-# PeaBox PDF Studio v0.2.0
+# PeaBox PDF Studio v0.3.0
 
-A functional local-first web PDF editor built with Python, Streamlit, and PyMuPDF.
+A visual, local-first PDF editor with a FastAPI/PyMuPDF backend and a responsive browser workspace.
 
-## Working features
-- Open normal and password-protected PDFs
-- Full-page preview and navigation
-- Cumulative editing with 20-step undo/redo
-- Add text with position, size, and colour
-- Upload and place images or signature files
-- Draw a signature in the browser and place it on a page
-- Rotate, delete, extract, and reorder pages
-- Append PDFs to the active document
-- Standalone multi-file merge
-- Add watermarks to selected pages
-- Edit title, author, subject, and keywords
-- Create AES-256 password-protected copies
-- Download the current edited PDF
+## What changed
+v0.3 replaces form-driven coordinate entry with a direct-manipulation editor. Existing text blocks are detected automatically. Click a block to replace it, edit in place, move objects visually, and use a contextual property panel.
 
-## Windows quick start
-1. Install Python 3.11 or 3.12.
-2. Extract this ZIP.
-3. Double-click `run_windows.bat`.
+## Features
+- Visual page canvas with zoom and navigation
+- Click detected text to replace it
+- In-place text editing with font size and colour
+- Add draggable text boxes by double-clicking the page
+- Add images and signature images visually
+- Highlights and permanent black redactions
+- Undo/redo before commit
+- Commit edits and continue editing
+- Download without committing
+- Delete pages and reverse page order
+- Merge PDFs
+- Password-protected PDF opening
+- Local temporary in-memory document handling
 
-## Manual start
+## Run on Windows
+Double-click `run_windows.bat`, then open http://127.0.0.1:8000.
+
+## Manual run
 ```bash
 python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux/macOS
-source .venv/bin/activate
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+uvicorn app:app --reload
 ```
 
-## Tests
-```bash
-pytest -q
-```
-
-## Editing scope
-PDF is a fixed-layout format. This release provides reliable overlays and page-level editing. It does not reconstruct and reflow existing paragraphs like Microsoft Word. OCR, redaction, annotations, page thumbnails, and direct selection tools are planned next.
+## Important PDF reality
+The editor replaces a selected text region by removing its PDF content and writing replacement text into the same rectangle. This is genuine region-level PDF editing, but PDF has no paragraph reflow model. Long replacement text must fit the original region or the user should enlarge the box.
