@@ -2,3 +2,5 @@
 
 .modal[hidden]{display:none!important}
 .dialog-head button:hover{background:#f2f4f7}
+/* v0.4 workspace fixes */
+html,body{height:100%;overflow:hidden}.shell{height:calc(100dvh - 64px);min-height:0}.shell>main{height:100%;min-height:0;overflow:hidden}#workspace{height:100%;min-height:0;display:flex;flex-direction:column}#workspace[hidden]{display:none!important}#stageWrap{height:auto;min-height:0;flex:1;overflow:auto!important;overscroll-behavior:contain;padding:24px;scrollbar-gutter:stable both-edges}#stage{margin:0 auto 40px}.left,.right{height:100%;min-height:0;overflow-y:auto}.toolbar{flex:0 0 52px;position:sticky;top:0;z-index:3}.block{cursor:text}.block:hover{outline:2px solid #3157d5;outline-offset:1px;background:#eef2ff4d}.edit-note{background:#eef4ff;color:#2946a8;padding:10px;border-radius:9px;font-size:13px;line-height:1.45;margin-bottom:12px}

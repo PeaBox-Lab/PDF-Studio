@@ -1,4 +1,4 @@
-# PeaBox PDF Studio v0.3.1
+# PeaBox PDF Studio v0.4.0
 
 A visual, local-first PDF editor with a FastAPI/PyMuPDF backend and a responsive browser workspace.
 
@@ -34,3 +34,12 @@ uvicorn app:app --reload
 
 ## Important PDF reality
 The editor replaces a selected text region by removing its PDF content and writing replacement text into the same rectangle. This is genuine region-level PDF editing, but PDF has no paragraph reflow model. Long replacement text must fit the original region or the user should enlarge the box.
+
+
+## Windows launcher note
+The v0.4.0 launcher deliberately starts Uvicorn with `python -m uvicorn` instead of relying on a `uvicorn.exe` command being present on Windows PATH. This supports locked-down/user-level Python installations where packages are installed under the user profile.
+
+Alternative start command:
+```bat
+py -3 -m uvicorn app:app --host 127.0.0.1 --port 8000
+```

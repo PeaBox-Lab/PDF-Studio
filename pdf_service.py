@@ -20,10 +20,17 @@ def text_blocks(data,page,password=""):
     d=open_pdf(data,password)
     try:
         out=[]
-        for i,b in enumerate(d[page].get_text("blocks")):
-            x0,y0,x1,y1,text,*_=b
-            text=text.strip()
-            if text: out.append({"id":i,"x":x0,"y":y0,"w":x1-x0,"h":y1-y0,"text":text})
+        info=d[page].get_text("dict")
+        bid=0
+        for block in info.get("blocks",[]):
+            if block.get("type") != 0: continue
+            for line in block.get("lines",[]):
+                for span in line.get("spans",[]):
+                    text=span.get("text","").strip()
+                    if not text: continue
+                    x0,y0,x1,y1=span["bbox"]
+                    out.append({"id":bid,"x":x0,"y":y0,"w":x1-x0,"h":y1-y0,"text":text,"fontSize":span.get("size",11),"color":"#%06x" % int(span.get("color",0))})
+                    bid+=1
         return out
     finally:d.close()
 
@@ -34,9 +41,15 @@ def apply(data,ops,password=""):
             p=d[int(op.get("page",0))]; kind=op.get("type")
             if kind=="replace_text":
                 r=fitz.Rect(op["x"],op["y"],op["x"]+op["w"],op["y"]+op["h"])
-                p.add_redact_annot(r,fill=(1,1,1));p.apply_redactions()
-                size=max(6,float(op.get("fontSize",11)))
-                p.insert_textbox(r,op.get("text","")+" ",fontsize=size,fontname="helv",color=hexcolor(op.get("color","#111827")),align=0,overlay=True)
+                p.add_redact_annot(r,fill=(1,1,1))
+                p.apply_redactions(images=0, graphics=0)
+                text=op.get("text","")
+                size=max(5,float(op.get("fontSize",11)))
+                result=-1
+                while size >= 5 and result < 0:
+                    result=p.insert_textbox(r,text,fontsize=size,fontname="helv",color=hexcolor(op.get("color","#111827")),align=0,overlay=True)
+                    if result < 0: size-=0.5
+                if result < 0: raise ValueError("Replacement text does not fit the selected area. Shorten it or enlarge the edit box.")
             elif kind=="text":
                 p.insert_text((op["x"],op["y"]),op.get("text",""),fontsize=float(op.get("fontSize",16)),fontname="helv",color=hexcolor(op.get("color","#111827")),overlay=True)
             elif kind in ("image","signature"):
