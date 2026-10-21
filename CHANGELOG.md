@@ -1,4 +1,13 @@
 # Changelog
+## v0.4.2
+- Replaced the remaining flex-height layout with a fixed viewport/grid workspace
+- Center editor is now pinned between the 48px header and bottom of browser viewport
+- PDF canvas gets the remaining viewport height directly, eliminating the large blank area above the page
+- Initial page fit now considers BOTH available width and height
+- Forced center canvas overflow scrolling independent of body/document scrolling
+- Added double-animation-frame layout measurement before PDF rendering
+- Added responsive compact sidebars for narrow effective viewports
+
 ## v0.4.1
 - Reworked layout around the actual browser viewport, including reduced-height/zoomed browser sessions
 - Added persistent visible horizontal and vertical document scrollbars
