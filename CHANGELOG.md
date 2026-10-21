@@ -1,18 +1,21 @@
 # Changelog
 
+## v1.2.0
+- Added drag-and-drop page reordering in the thumbnail panel
+- Added multi-page thumbnail selection
+- Added Extract Selected Pages
+- Added Duplicate Current Page
+- Added Insert Blank Page
+- Added Insert PDF After Page
+- Page-management operations participate in Undo/Redo
+- Kept text-size-preservation behavior from v1.0.1/v1.1
+
 ## v1.1.0
-- Added 20-step undo and redo using complete in-memory PDF snapshots
-- Added Zoom In, Zoom Out, Fit Page and 100% commands
-- Added Ctrl+Z, Ctrl+Y, Ctrl+0, Ctrl+1, Ctrl++ and Ctrl+- shortcuts
-- Added a dedicated new-text dialog with font-size control
-- Added image/signature position and dimension controls
-- Improved page-thumbnail refresh after changes
-- Improved document information and status feedback
-- Preserved the strict no-auto-shrink existing-text policy from v1.0.1
+- Added undo/redo and improved zoom controls
+- Added new-text and image/signature dialogs
 
 ## v1.0.1
-- Preserved original text size, baseline and color
-- Rejected oversized replacement text
+- Preserved text size/baseline and rejected oversized replacements
 
 ## v1.0.0
 - First native desktop release

@@ -10,3 +10,6 @@ def test_long_rejected_without_shrink():
  d.close();os.remove(p)
 def test_snapshot_bytes_reopen():
  p=make();d=e.open_document(p);snap=d.tobytes(garbage=4,deflate=True);d.close();x=pymupdf.open(stream=snap,filetype='pdf');assert x.page_count==1;x.close();os.remove(p)
+def test_reorder_duplicate_blank_extract():
+ p=make();d=e.open_document(p);e.duplicate_page(d,0);assert d.page_count==2;e.reorder_pages(d,[1,0]);e.insert_blank_page(d,0);assert d.page_count==3
+ out=p+'.extract.pdf';e.extract_pages(d,[0,2],out);x=pymupdf.open(out);assert x.page_count==2;x.close();d.close();os.remove(p);os.remove(out)

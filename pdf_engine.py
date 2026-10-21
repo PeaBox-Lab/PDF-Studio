@@ -47,3 +47,27 @@ def merge_paths(paths,out):
    s=pymupdf.open(path);d.insert_pdf(s);s.close()
   d.save(out,garbage=4,deflate=True)
  finally:d.close()
+
+def reorder_pages(doc, order):
+ if sorted(order)!=list(range(doc.page_count)): raise ValueError('New order must include every page exactly once')
+ doc.select(order)
+
+def duplicate_page(doc,index):
+ doc.fullcopy_page(index, to=index)
+
+def extract_pages(doc,indexes,path):
+ if not indexes: raise ValueError('Select at least one page')
+ out=pymupdf.open()
+ try:
+  for i in indexes:out.insert_pdf(doc,from_page=i,to_page=i)
+  out.save(path,garbage=4,deflate=True)
+ finally:out.close()
+
+def insert_blank_page(doc,after_index,width=None,height=None):
+ ref=doc[after_index].rect
+ doc.new_page(pno=after_index+1,width=width or ref.width,height=height or ref.height)
+
+def insert_pdf_after(doc,after_index,path):
+ other=pymupdf.open(path)
+ try:doc.insert_pdf(other,start_at=after_index+1)
+ finally:other.close()

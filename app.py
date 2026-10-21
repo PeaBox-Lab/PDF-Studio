@@ -41,7 +41,7 @@ class ImageDialog(QDialog):
 
 class Main(QMainWindow):
  def __init__(self):
-  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.1.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[]
+  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.2.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[]
   self.build_toolbar();self.build_ui();self.setStatusBar(QStatusBar());self.statusBar().showMessage('Open a PDF to begin')
  def action(self,bar,name,key,fn):
   a=QAction(name,self);a.setShortcut(QKeySequence(key));a.triggered.connect(fn);bar.addAction(a);return a
@@ -50,10 +50,10 @@ class Main(QMainWindow):
  def build_ui(self):
   root=QSplitter();self.setCentralWidget(root)
   tools=QWidget();tools.setFixedWidth(220);v=QVBoxLayout(tools);head=QLabel('TOOLS');head.setStyleSheet('font-weight:700');v.addWidget(head)
-  for label,fn in [('Edit existing text',self.edit_mode),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
+  for label,fn in [('Edit existing text',self.edit_mode),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Duplicate current page',self.duplicate),('Extract selected pages',self.extract),('Insert blank page',self.blank),('Insert PDF after page',self.insert_pdf),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
    btn=QPushButton(label);btn.clicked.connect(fn);v.addWidget(btn)
   v.addStretch();hint=QLabel('Existing text: double-click the exact text. PeaBox preserves its size and rejects replacements that do not fit.');hint.setWordWrap(True);hint.setObjectName('hint');v.addWidget(hint);root.addWidget(tools)
-  self.thumbs=QListWidget();self.thumbs.setFixedWidth(180);self.thumbs.currentRowChanged.connect(self.goto);root.addWidget(self.thumbs)
+  self.thumbs=QListWidget();self.thumbs.setFixedWidth(190);self.thumbs.setSelectionMode(QAbstractItemView.ExtendedSelection);self.thumbs.setDragDropMode(QAbstractItemView.InternalMove);self.thumbs.setDefaultDropAction(Qt.MoveAction);self.thumbs.currentRowChanged.connect(self.goto);self.thumbs.model().rowsMoved.connect(self.pages_reordered);root.addWidget(self.thumbs)
   center=QWidget();cv=QVBoxLayout(center);cv.setContentsMargins(0,0,0,0);nav=QHBoxLayout();self.prev=QPushButton('Previous');self.next=QPushButton('Next');self.page_label=QLabel('Page 0 of 0');self.zoom_label=QLabel('100%');self.prev.clicked.connect(lambda:self.goto(max(0,self.page-1)));self.next.clicked.connect(lambda:self.goto(min(self.doc.page_count-1,self.page+1)) if self.doc else None)
   for w in (self.prev,self.next,self.page_label,self.zoom_label):nav.addWidget(w)
   nav.addStretch();cv.addLayout(nav);self.scene=QGraphicsScene();self.view=QGraphicsView(self.scene);self.view.setDragMode(QGraphicsView.ScrollHandDrag);cv.addWidget(self.view);root.addWidget(center);root.setStretchFactor(2,1)
@@ -81,10 +81,10 @@ class Main(QMainWindow):
  def update_history(self):
   if hasattr(self,'undo_action'):self.undo_action.setEnabled(bool(self.undo_stack));self.redo_action.setEnabled(bool(self.redo_stack))
  def refresh_thumbs(self):
-  self.thumbs.blockSignals(True);self.thumbs.clear()
+  self._refreshing=True;self.thumbs.blockSignals(True);self.thumbs.clear()
   for i in range(self.doc.page_count):
-   data,_,_=engine.render_page(self.doc,i,.18);item=QListWidgetItem(QIcon(QPixmap.fromImage(QImage.fromData(data))),f'Page {i+1}');item.setSizeHint(item.sizeHint()*1.35);self.thumbs.addItem(item)
-  self.thumbs.blockSignals(False)
+   data,_,_=engine.render_page(self.doc,i,.18);item=QListWidgetItem(QIcon(QPixmap.fromImage(QImage.fromData(data))),f'Page {i+1}');item.setData(Qt.UserRole,i);item.setSizeHint(item.sizeHint()*1.35);self.thumbs.addItem(item)
+  self.thumbs.blockSignals(False);self._refreshing=False
  def render(self):
   if not self.doc:return
   data,w,h=engine.render_page(self.doc,self.page,self.zoom);self.scene.clear();self.scene.setSceneRect(0,0,w,h);self.scene.addPixmap(QPixmap.fromImage(QImage.fromData(data)))
@@ -119,6 +119,34 @@ class Main(QMainWindow):
   self.snapshot()
   try:engine.delete_pages(self.doc,[self.page]);self.page=min(self.page,self.doc.page_count-1);self.changed('Page deleted')
   except Exception as e:self.undo_stack.pop();self.update_history();QMessageBox.warning(self,'Cannot delete page',str(e))
+
+ def pages_reordered(self,*args):
+  if not self.doc or getattr(self,'_refreshing',False):return
+  order=[]
+  for i in range(self.thumbs.count()):order.append(self.thumbs.item(i).data(Qt.UserRole))
+  if sorted(order)!=list(range(self.doc.page_count)):return
+  self.snapshot();engine.reorder_pages(self.doc,order);self.page=self.thumbs.currentRow();self.changed('Pages reordered')
+ def duplicate(self):
+  if not self.doc:return
+  self.snapshot();engine.duplicate_page(self.doc,self.page);self.page+=1;self.changed('Page duplicated')
+ def extract(self):
+  if not self.doc:return
+  indexes=sorted({self.thumbs.row(x) for x in self.thumbs.selectedItems()}) or [self.page]
+  out,_=QFileDialog.getSaveFileName(self,'Extract selected pages','extracted-pages.pdf','PDF files (*.pdf)')
+  if not out:return
+  try:engine.extract_pages(self.doc,indexes,out);QMessageBox.information(self,'Pages extracted',f'Saved {len(indexes)} page(s) to\n{out}')
+  except Exception as e:QMessageBox.warning(self,'Extract failed',str(e))
+ def blank(self):
+  if not self.doc:return
+  self.snapshot();engine.insert_blank_page(self.doc,self.page);self.page+=1;self.changed('Blank page inserted')
+ def insert_pdf(self):
+  if not self.doc:return
+  path,_=QFileDialog.getOpenFileName(self,'Insert PDF after current page','','PDF files (*.pdf)')
+  if not path:return
+  self.snapshot()
+  try:engine.insert_pdf_after(self.doc,self.page,path);self.changed('PDF inserted after current page')
+  except Exception as e:self.undo_stack.pop();self.update_history();QMessageBox.warning(self,'Insert failed',str(e))
+
  def merge(self):
   paths,_=QFileDialog.getOpenFileNames(self,'Choose PDFs to merge','','PDF files (*.pdf)')
   if len(paths)<2:return
