@@ -1,30 +1,123 @@
-# PeaBox PDF Studio Desktop v1.0.0
+# PeaBox PDF Studio
 
-A Windows-friendly local desktop PDF editor. This is a clean break from the earlier browser UI.
+> **Edit PDFs locally. Keep your documents private.**
 
-## Why desktop
-- Native scrolling, dialogs, menus, keyboard shortcuts, and high-DPI handling
-- No local web server or browser zoom complications
-- Explicit labeled tools instead of unexplained icons
-- PDF page remains central
-- Safer existing-text correction workflow
+PeaBox PDF Studio is a lightweight, local-first desktop PDF editor for viewing PDFs, correcting existing text, managing pages, adding content, and performing common PDF operations without uploading documents to an external service.
 
-## Safe text editing
-Double-click an existing text span. PeaBox removes only that exact rectangle and inserts a replacement that must fit the same area. If the replacement is too long, the operation is rejected instead of reflowing or damaging surrounding layout.
+The project focuses on one principle:
 
-## Working features
-- Native PDF viewing with thumbnails
-- Fit Page and 100% zoom
-- Existing-text correction by double-click
-- Add new text by double-click in Add Text mode
-- Add an image/signature
-- Rotate and delete pages
-- Merge PDFs
-- Save As, reload original, keyboard shortcuts
-- Unsaved-changes warning
+> **PDF editing should be simple, predictable, private, and should not destroy the original document layout.**
 
-## Run on Windows
-Extract the ZIP and double-click `run_windows.bat`.
+PeaBox PDF Studio is built with Python, PySide6/Qt, PyMuPDF, and Pillow.
 
-## Notes
-This release intentionally prioritizes predictable correction of short text, names, dates, labels, and amounts. PDF is fixed-layout. It is not safe to offer Word-like paragraph reflow without reconstructing the page.
+---
+
+## Current Release
+
+**Version:** `v1.0.1`
+
+**Application type:** Desktop application
+
+**Primary platform:** Windows
+
+**License:** MIT
+
+---
+
+# Table of Contents
+
+- [Why PeaBox PDF Studio](#why-peabox-pdf-studio)
+- [Features](#features)
+- [Text Editing](#text-editing)
+- [How Text Replacement Works](#how-text-replacement-works)
+- [Installation](#installation)
+- [Windows Quick Start](#windows-quick-start)
+- [Manual Installation](#manual-installation)
+- [User Guide](#user-guide)
+- [Opening a PDF](#opening-a-pdf)
+- [Navigating Pages](#navigating-pages)
+- [Editing Existing Text](#editing-existing-text)
+- [Adding New Text](#adding-new-text)
+- [Adding Images and Signatures](#adding-images-and-signatures)
+- [Rotating Pages](#rotating-pages)
+- [Deleting Pages](#deleting-pages)
+- [Merging PDFs](#merging-pdfs)
+- [Saving a PDF](#saving-a-pdf)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Privacy](#privacy)
+- [Supported PDFs](#supported-pdfs)
+- [Scanned PDFs](#scanned-pdfs)
+- [Fonts](#fonts)
+- [Known Limitations](#known-limitations)
+- [Troubleshooting](#troubleshooting)
+- [Development Setup](#development-setup)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+# Why PeaBox PDF Studio?
+
+Many online PDF tools require users to upload documents to a remote service.
+
+That may not be appropriate for documents containing:
+
+- HR information
+- Employee data
+- Contracts
+- Financial information
+- Internal business documents
+- Customer information
+- Personal records
+- Confidential material
+
+PeaBox PDF Studio follows a **local-first** model.
+
+Your PDF is opened and processed on your computer.
+
+No PeaBox account is required.
+
+No browser-based PDF service is required.
+
+No PeaBox cloud upload is required for normal editing operations.
+
+---
+
+# Features
+
+## PDF Viewing
+
+- Open local PDF files
+- Native desktop application
+- Page thumbnail navigation
+- Scroll through large PDF pages
+- Fit page to the application window
+- View individual pages
+- Current page indicator
+- Total page count
+- Native Windows controls
+
+---
+
+## Existing Text Correction
+
+PeaBox PDF Studio can identify textual content already contained inside many digitally generated PDFs.
+
+You can:
+
+- Select existing text
+- Double-click text to edit it
+- Enter replacement text
+- Preserve the detected font size
+- Preserve the original text baseline
+- Preserve the original text colour
+- Approximate the original font characteristics
+- Prevent automatic font shrinking
+
+The editor is particularly useful for corrections such as:
+
+```text
+John Smith
