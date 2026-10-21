@@ -1,4 +1,4 @@
-import io, fitz
+import io, pymupdf as fitz
 from PIL import Image
 
 def open_pdf(data, password=""):

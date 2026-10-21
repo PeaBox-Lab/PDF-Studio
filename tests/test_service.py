@@ -1,4 +1,4 @@
-import fitz,pdf_service as s
+import pymupdf as fitz,pdf_service as s
 def sample():
  d=fitz.open();p=d.new_page();p.insert_text((72,72),"Hello editable world");b=d.tobytes();d.close();return b
 def test_blocks():assert any("Hello" in x["text"] for x in s.text_blocks(sample(),0))

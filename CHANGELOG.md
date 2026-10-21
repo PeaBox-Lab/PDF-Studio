@@ -1,4 +1,11 @@
 # Changelog
+## v0.3.1
+- Fixed Organize Pages modal appearing permanently on startup
+- Added X, backdrop-click, and Escape-key modal closing
+- Prevented page organizer from opening before a PDF is loaded
+- Migrated legacy `fitz` imports to current `pymupdf` imports
+- Added cache-busting for corrected frontend assets
+
 ## v0.3.0
 - Replaced Streamlit UI with a purpose-built visual editor
 - Added automatic text-block detection and click-to-edit

@@ -1,4 +1,4 @@
-# PeaBox PDF Studio v0.3.0
+# PeaBox PDF Studio v0.3.1
 
 A visual, local-first PDF editor with a FastAPI/PyMuPDF backend and a responsive browser workspace.
 
