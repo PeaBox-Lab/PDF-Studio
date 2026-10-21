@@ -1,4 +1,12 @@
 # Changelog
+## v0.5.0
+- Rebuilt the shell as a document-first PDF workbench inspired by PdfCraft interaction patterns
+- Added persistent page-thumbnail navigation
+- Replaced the large upload sidebar with a compact icon rail
+- Added dark document canvas, compact top controls, and contextual inspector
+- Added responsive thumbnail/inspector behavior for constrained viewports
+- Preserved span-level existing-text replacement, page organization, merge, annotation, redaction, images, signatures, undo/redo, and export
+
 ## v0.4.2
 - Replaced the remaining flex-height layout with a fixed viewport/grid workspace
 - Center editor is now pinned between the 48px header and bottom of browser viewport
