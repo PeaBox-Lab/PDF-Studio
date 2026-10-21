@@ -1,4 +1,13 @@
 # Changelog
+## v0.4.1
+- Reworked layout around the actual browser viewport, including reduced-height/zoomed browser sessions
+- Added persistent visible horizontal and vertical document scrollbars
+- PDF now auto-fits to the available center workspace on load and browser resize
+- Reduced left and right panels, top header, tool spacing, and upload empty-state footprint
+- Document starts at the top of the canvas instead of below an oversized empty area
+- Tightened existing-text replacement region and editor chrome
+- Added responsive widths for narrower effective viewport sizes
+
 ## v0.4.0
 - Fixed PDF workspace viewport: document now scrolls inside the editor instead of loading below an inaccessible viewport
 - Text detection upgraded from coarse blocks to individual PDF text spans

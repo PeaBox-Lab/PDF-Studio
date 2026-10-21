@@ -1,4 +1,4 @@
-# PeaBox PDF Studio v0.4.0
+# PeaBox PDF Studio v0.4.1
 
 A visual, local-first PDF editor with a FastAPI/PyMuPDF backend and a responsive browser workspace.
 
@@ -37,7 +37,7 @@ The editor replaces a selected text region by removing its PDF content and writi
 
 
 ## Windows launcher note
-The v0.4.0 launcher deliberately starts Uvicorn with `python -m uvicorn` instead of relying on a `uvicorn.exe` command being present on Windows PATH. This supports locked-down/user-level Python installations where packages are installed under the user profile.
+The v0.4.1 launcher deliberately starts Uvicorn with `python -m uvicorn` instead of relying on a `uvicorn.exe` command being present on Windows PATH. This supports locked-down/user-level Python installations where packages are installed under the user profile.
 
 Alternative start command:
 ```bat

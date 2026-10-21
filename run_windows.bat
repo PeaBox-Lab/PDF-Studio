@@ -1,10 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title PeaBox PDF Studio v0.4.0
+title PeaBox PDF Studio v0.4.1
 
 echo ==========================================
-echo   PeaBox PDF Studio v0.4.0
+echo   PeaBox PDF Studio v0.4.1
 echo ==========================================
 echo.
 
