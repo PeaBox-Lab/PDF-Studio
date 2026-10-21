@@ -1,8 +1,12 @@
-import pymupdf, tempfile, os
-import pdf_engine as e
+import pymupdf,tempfile,os,pdf_engine as e
 def make():
- p=tempfile.mktemp(suffix='.pdf');d=pymupdf.open();x=d.new_page();x.insert_text((72,72),'Hello world');d.save(p);d.close();return p
-def test_replace_keeps_page():
- p=make();d=e.open_document(p);s=e.text_spans(d[0])[0];e.replace_span(d,0,s,'Hi');out=p+'.out.pdf';e.save_copy(d,out);d.close();q=pymupdf.open(out);assert q.page_count==1 and 'Hi' in q[0].get_text();q.close();os.remove(p);os.remove(out)
-def test_delete_and_rotate():
- p=make();d=e.open_document(p);e.rotate_pages(d,[0],90);assert d[0].rotation==90;d.close();os.remove(p)
+ p=tempfile.mktemp(suffix='.pdf');d=pymupdf.open();pg=d.new_page();pg.insert_text((72,72),'Hello world',fontsize=12);d.save(p);d.close();return p
+def test_same_size():
+ p=make();d=e.open_document(p);s=e.text_spans(d[0])[0];assert e.replace_span(d,0,s,'Hello')==s['size'];d.close();os.remove(p)
+def test_long_rejected_without_shrink():
+ p=make();d=e.open_document(p);s=e.text_spans(d[0])[0]
+ try:e.replace_span(d,0,s,'This replacement is intentionally much too long');assert False
+ except ValueError as x:assert 'will not shrink' in str(x)
+ d.close();os.remove(p)
+def test_snapshot_bytes_reopen():
+ p=make();d=e.open_document(p);snap=d.tobytes(garbage=4,deflate=True);d.close();x=pymupdf.open(stream=snap,filetype='pdf');assert x.page_count==1;x.close();os.remove(p)

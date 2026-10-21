@@ -1,30 +1,42 @@
-# PeaBox PDF Studio Desktop v1.0.0
+# PeaBox PDF Studio Desktop v1.1.0
 
-A Windows-friendly local desktop PDF editor. This is a clean break from the earlier browser UI.
+A local-first native PDF editor built with Python, PySide6 and PyMuPDF.
 
-## Why desktop
-- Native scrolling, dialogs, menus, keyboard shortcuts, and high-DPI handling
-- No local web server or browser zoom complications
-- Explicit labeled tools instead of unexplained icons
-- PDF page remains central
-- Safer existing-text correction workflow
+## v1.1 highlights
+
+- 20-step undo and redo for document changes
+- Zoom In, Zoom Out, Fit Page and 100% controls
+- Keyboard shortcuts for open, save, undo, redo and zoom
+- Labeled tools for existing-text correction, new text, image/signature, rotate, delete and merge
+- New-text dialog with font-size control
+- Image/signature dialog with position and size controls
+- Existing text continues to preserve its extracted size and baseline
+- Page thumbnails refresh after edits
+- Unsaved-change protection
+
+## Installation
+
+1. Install Python 3.11 or newer.
+2. Extract the release ZIP.
+3. Double-click `run_windows.bat`.
+
+Manual installation:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+python app.py
+```
+
+## Basic use
+
+1. Open a PDF with `Ctrl+O`.
+2. Double-click existing text to correct it.
+3. Use the labeled left-side tools for new text, images, rotation, deletion or merging.
+4. Use `Ctrl+Z` and `Ctrl+Y` to undo or redo.
+5. Save a new copy with `Ctrl+Shift+S`.
 
 ## Safe text editing
-Double-click an existing text span. PeaBox removes only that exact rectangle and inserts a replacement that must fit the same area. If the replacement is too long, the operation is rejected instead of reflowing or damaging surrounding layout.
 
-## Working features
-- Native PDF viewing with thumbnails
-- Fit Page and 100% zoom
-- Existing-text correction by double-click
-- Add new text by double-click in Add Text mode
-- Add an image/signature
-- Rotate and delete pages
-- Merge PDFs
-- Save As, reload original, keyboard shortcuts
-- Unsaved-changes warning
-
-## Run on Windows
-Extract the ZIP and double-click `run_windows.bat`.
-
-## Notes
-This release intentionally prioritizes predictable correction of short text, names, dates, labels, and amounts. PDF is fixed-layout. It is not safe to offer Word-like paragraph reflow without reconstructing the page.
+PeaBox preserves the detected font size. It does not shrink replacement text automatically. If replacement text cannot fit in the original area, the edit is rejected rather than damaging the layout.

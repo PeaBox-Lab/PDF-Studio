@@ -1,126 +1,147 @@
-from __future__ import annotations
-import os, sys, tempfile
+import sys
 from pathlib import Path
-from PySide6.QtCore import Qt, QRectF, Signal
-from PySide6.QtGui import QAction, QColor, QIcon, QImage, QKeySequence, QPainter, QPen, QPixmap, QShortcut
-from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QHBoxLayout,QVBoxLayout,QGridLayout,QLabel,QPushButton,QFileDialog,QListWidget,QListWidgetItem,QGraphicsView,QGraphicsScene,QGraphicsPixmapItem,QGraphicsRectItem,QDialog,QDialogButtonBox,QFormLayout,QLineEdit,QDoubleSpinBox,QColorDialog,QMessageBox,QToolBar,QStatusBar,QInputDialog,QSplitter,QGroupBox,QScrollArea,QFrame)
+import pymupdf
+from PySide6.QtCore import Qt,QRectF
+from PySide6.QtGui import QAction,QColor,QIcon,QImage,QKeySequence,QPen,QPixmap
+from PySide6.QtWidgets import *
 import pdf_engine as engine
 
-STYLE='''QMainWindow{background:#eef1f5} QToolBar{background:white;border-bottom:1px solid #d9dee7;padding:5px;spacing:6px} QPushButton{padding:8px 10px;border:1px solid #d9dee7;border-radius:7px;background:white;text-align:left} QPushButton:hover{background:#eef3ff;border-color:#8da4ef} QPushButton:checked{background:#e5ecff;color:#2448b8;border-color:#7b96e8} QListWidget{border:0;background:#f8f9fb;padding:5px} QGraphicsView{border:0;background:#292d34} QGroupBox{font-weight:600;border:1px solid #dfe3e8;border-radius:8px;margin-top:8px;padding-top:12px} QGroupBox::title{subcontrol-origin:margin;left:9px;padding:0 4px} QLabel#hint{color:#667085;background:#f2f4f7;padding:9px;border-radius:7px}'''
+STYLE='''QMainWindow{background:#eef1f5}QToolBar{background:white;border-bottom:1px solid #d9dee7;padding:5px;spacing:5px}QPushButton{padding:9px 10px;border:1px solid #d9dee7;border-radius:7px;background:white;text-align:left}QPushButton:hover{background:#f2f5ff}QPushButton:checked{background:#e5ecff;color:#2448b8;border-color:#88a0eb}QListWidget{border:0;background:#f8f9fb;padding:4px}QGraphicsView{border:0;background:#292d34}QLabel#hint{color:#5f6877;background:#f2f4f7;padding:9px;border-radius:7px}QGroupBox{font-weight:600;border:1px solid #dfe3e8;border-radius:8px;margin-top:8px;padding-top:12px}'''
 
 class SpanItem(QGraphicsRectItem):
-    def __init__(self,rect,span,callback,scale):
-        super().__init__(QRectF(rect[0]*scale,rect[1]*scale,(rect[2]-rect[0])*scale,(rect[3]-rect[1])*scale));self.span=span;self.callback=callback
-        self.setPen(QPen(QColor(0,0,0,0),1));self.setBrush(QColor(61,99,221,0));self.setAcceptHoverEvents(True);self.setZValue(5)
-    def hoverEnterEvent(self,e):self.setPen(QPen(QColor('#3d63dd'),1));self.setBrush(QColor(61,99,221,25))
-    def hoverLeaveEvent(self,e):self.setPen(QPen(QColor(0,0,0,0),1));self.setBrush(QColor(61,99,221,0))
-    def mouseDoubleClickEvent(self,e):self.callback(self.span);e.accept()
+ def __init__(self,span,callback,zoom):
+  x0,y0,x1,y1=span['rect'];super().__init__(QRectF(x0*zoom,y0*zoom,(x1-x0)*zoom,(y1-y0)*zoom));self.span=span;self.callback=callback
+  self.setPen(QPen(Qt.transparent));self.setBrush(Qt.transparent);self.setAcceptHoverEvents(True);self.setZValue(5);self.setToolTip('Double-click to edit this text')
+ def hoverEnterEvent(self,e):self.setPen(QPen(QColor('#3d63dd'),2));self.setBrush(QColor(61,99,221,30))
+ def hoverLeaveEvent(self,e):self.setPen(QPen(Qt.transparent));self.setBrush(Qt.transparent)
+ def mouseDoubleClickEvent(self,e):self.callback(self.span);e.accept()
 
-class ReplaceDialog(QDialog):
-    def __init__(self,span,parent=None):
-        super().__init__(parent);self.setWindowTitle("Replace existing text");self.setMinimumWidth(480)
-        lay=QVBoxLayout(self);hint=QLabel("The original characters in this exact area will be removed. The replacement must fit the same area. Surrounding layout will not be moved.");hint.setWordWrap(True);hint.setObjectName('hint');lay.addWidget(hint)
-        form=QFormLayout();self.original=QLineEdit(span['text']);self.original.setReadOnly(True);self.edit=QLineEdit(span['text']);self.edit.selectAll();form.addRow("Original",self.original);form.addRow("Replacement",self.edit);lay.addLayout(form)
-        box=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel);box.accepted.connect(self.accept);box.rejected.connect(self.reject);lay.addWidget(box)
-    def value(self):return self.edit.text()
+class TextDialog(QDialog):
+ def __init__(self,title,initial='',size=14,parent=None,existing=False):
+  super().__init__(parent);self.setWindowTitle(title);self.setMinimumWidth(480);v=QVBoxLayout(self)
+  note=QLabel('Original font size is preserved. If replacement text cannot fit, PeaBox stops the edit instead of shrinking it.' if existing else 'Add short new text at the centre of the current page.');note.setWordWrap(True);note.setObjectName('hint');v.addWidget(note)
+  f=QFormLayout();self.text=QLineEdit(initial);self.size=QDoubleSpinBox();self.size.setRange(6,72);self.size.setValue(size);f.addRow('Text',self.text)
+  if existing:self.size.setDisabled(True)
+  f.addRow('Font size',self.size);v.addLayout(f);box=QDialogButtonBox(QDialogButtonBox.Save|QDialogButtonBox.Cancel);box.accepted.connect(self.accept);box.rejected.connect(self.reject);v.addWidget(box);self.text.selectAll()
 
-class AddTextDialog(QDialog):
-    def __init__(self,parent=None):
-        super().__init__(parent);self.setWindowTitle("Add new text");form=QFormLayout(self);self.text=QLineEdit();self.size=QDoubleSpinBox();self.size.setRange(6,72);self.size.setValue(14);form.addRow("Text",self.text);form.addRow("Font size",self.size);box=QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel);box.accepted.connect(self.accept);box.rejected.connect(self.reject);form.addRow(box)
+class ImageDialog(QDialog):
+ def __init__(self,page,parent=None):
+  super().__init__(parent);self.setWindowTitle('Add image or signature');self.path='';f=QFormLayout(self);pick=QPushButton('Choose PNG or JPG');pick.clicked.connect(self.choose);self.file=QLabel('No image selected');f.addRow(pick,self.file)
+  self.x=QDoubleSpinBox();self.y=QDoubleSpinBox();self.w=QDoubleSpinBox();self.h=QDoubleSpinBox()
+  for s in (self.x,self.y,self.w,self.h):s.setRange(0,5000)
+  self.x.setValue(36);self.y.setValue(36);self.w.setValue(min(180,page.rect.width-50));self.h.setValue(80)
+  for name,w in [('X',self.x),('Y',self.y),('Width',self.w),('Height',self.h)]:f.addRow(name,w)
+  box=QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel);box.accepted.connect(self.accept);box.rejected.connect(self.reject);f.addRow(box)
+ def choose(self):
+  p,_=QFileDialog.getOpenFileName(self,'Choose image','','Images (*.png *.jpg *.jpeg)')
+  if p:self.path=p;self.file.setText(Path(p).name)
+ def accept(self):
+  if not self.path:QMessageBox.warning(self,'Image required','Choose an image first.');return
+  super().accept()
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__();self.setWindowTitle("PeaBox PDF Studio Desktop");self.resize(1440,900);self.doc=None;self.path=None;self.page=0;self.scale=1.35;self.tool='edit';self.dirty=False
-        self.build_toolbar();self.build_ui();self.setStatusBar(QStatusBar());self.statusBar().showMessage("Open a PDF to begin")
-    def build_toolbar(self):
-        bar=QToolBar();bar.setMovable(False);self.addToolBar(bar)
-        for text,shortcut,slot in [("Open PDF","Ctrl+O",self.open_pdf),("Save As","Ctrl+Shift+S",self.save_as),("Undo reload","Ctrl+Z",self.reload_document)]:
-            a=QAction(text,self);a.setShortcut(QKeySequence(shortcut));a.triggered.connect(slot);bar.addAction(a)
-        bar.addSeparator();self.title=QLabel("No document open");bar.addWidget(self.title)
-    def build_ui(self):
-        root=QSplitter(Qt.Horizontal);self.setCentralWidget(root)
-        tools=QWidget();tools.setFixedWidth(190);tv=QVBoxLayout(tools);tv.setContentsMargins(10,10,10,10);tv.addWidget(QLabel("TOOLS"))
-        self.buttons={}
-        specs=[('edit','Edit existing text',self.enable_edit),('add','Add new text',self.enable_add),('image','Add image or signature',self.add_image),('rotate','Rotate current page',self.rotate_page),('delete','Delete current page',self.delete_page),('merge','Merge PDF files',self.merge_files)]
-        for key,label,fn in specs:
-            b=QPushButton(label);b.setToolTip(label);b.setCheckable(key in ('edit','add'));b.clicked.connect(fn);tv.addWidget(b);self.buttons[key]=b
-        self.buttons['edit'].setChecked(True);tv.addStretch();help=QLabel("Editing existing text\n\n1. Choose Edit existing text.\n2. Double-click the exact text.\n3. Enter a short replacement.\n4. Save As when finished.");help.setWordWrap(True);help.setObjectName('hint');tv.addWidget(help);root.addWidget(tools)
-        self.thumbs=QListWidget();self.thumbs.setFixedWidth(170);self.thumbs.currentRowChanged.connect(self.goto_page);root.addWidget(self.thumbs)
-        center=QWidget();cv=QVBoxLayout(center);cv.setContentsMargins(0,0,0,0);nav=QHBoxLayout();
-        self.prev=QPushButton("Previous page");self.next=QPushButton("Next page");self.fit=QPushButton("Fit page");self.actual=QPushButton("100%");self.pageLabel=QLabel("Page 0 of 0")
-        self.prev.clicked.connect(lambda:self.goto_page(max(0,self.page-1)));self.next.clicked.connect(lambda:self.goto_page(min(self.doc.page_count-1,self.page+1)) if self.doc else None);self.fit.clicked.connect(self.fit_page);self.actual.clicked.connect(lambda:self.set_zoom(1.0))
-        for w in (self.prev,self.next,self.pageLabel,self.fit,self.actual):nav.addWidget(w)
-        nav.addStretch();cv.addLayout(nav)
-        self.scene=QGraphicsScene();self.view=QGraphicsView(self.scene);self.view.setRenderHint(QPainter.Antialiasing);self.view.setDragMode(QGraphicsView.ScrollHandDrag);cv.addWidget(self.view);root.addWidget(center)
-        inspector=QWidget();inspector.setFixedWidth(260);iv=QVBoxLayout(inspector);head=QLabel("DOCUMENT");head.setStyleSheet('font-weight:700');iv.addWidget(head);self.info=QLabel("Open a PDF to see document details.");self.info.setWordWrap(True);iv.addWidget(self.info);g=QGroupBox("Safe editing model");gl=QVBoxLayout(g);msg=QLabel("PeaBox replaces only the selected text rectangle. It does not reflow or move nearby PDF content. Long text is rejected rather than damaging the layout.");msg.setWordWrap(True);gl.addWidget(msg);iv.addWidget(g);iv.addStretch();root.addWidget(inspector);root.setStretchFactor(2,1)
-    def open_pdf(self):
-        path,_=QFileDialog.getOpenFileName(self,"Open PDF","","PDF files (*.pdf)")
-        if not path:return
-        try:self.load_path(path)
-        except Exception as e:QMessageBox.critical(self,"Cannot open PDF",str(e))
-    def load_path(self,path):
-        if self.doc:self.doc.close()
-        self.doc=engine.open_document(path);self.path=path;self.page=0;self.dirty=False;self.title.setText(Path(path).name);self.populate_thumbs();self.thumbs.setCurrentRow(0);self.render();self.statusBar().showMessage("Double-click existing text to replace it")
-    def populate_thumbs(self):
-        self.thumbs.clear()
-        for i in range(self.doc.page_count):
-            data,_,_=engine.render_page(self.doc,i,.2);item=QListWidgetItem(QIcon(QPixmap.fromImage(QImage.fromData(data))),f"Page {i+1}");item.setSizeHint(item.sizeHint()*1.4);self.thumbs.addItem(item)
-    def render(self):
-        if not self.doc:return
-        data,w,h=engine.render_page(self.doc,self.page,self.scale);pix=QPixmap.fromImage(QImage.fromData(data));self.scene.clear();self.scene.setSceneRect(0,0,w,h);self.scene.addItem(QGraphicsPixmapItem(pix))
-        if self.tool=='edit':
-            for span in engine.text_spans(self.doc[self.page]):self.scene.addItem(SpanItem(span['rect'],span,self.replace_text,self.scale))
-        self.pageLabel.setText(f"Page {self.page+1} of {self.doc.page_count}");self.info.setText(f"{Path(self.path).name}\n\nPages: {self.doc.page_count}\nCurrent page: {self.page+1}\nMode: {'Edit existing text' if self.tool=='edit' else 'Add new text'}")
-    def goto_page(self,row):
-        if not self.doc or row<0:return
-        self.page=row
-        if self.thumbs.currentRow()!=row:self.thumbs.setCurrentRow(row)
-        self.render()
-    def enable_edit(self):self.tool='edit';self.buttons['edit'].setChecked(True);self.buttons['add'].setChecked(False);self.view.setDragMode(QGraphicsView.ScrollHandDrag);self.render();self.statusBar().showMessage("Double-click the exact existing text you want to replace")
-    def enable_add(self):self.tool='add';self.buttons['edit'].setChecked(False);self.buttons['add'].setChecked(True);self.view.setDragMode(QGraphicsView.NoDrag);self.statusBar().showMessage("Double-click a blank position on the page to add new text");self.view.mouseDoubleClickEvent=self.add_text_at
-    def replace_text(self,span):
-        d=ReplaceDialog(span,self)
-        if d.exec()!=QDialog.Accepted:return
-        try:engine.replace_span(self.doc,self.page,span,d.value());self.dirty=True;self.refresh_after_edit("Existing text replaced without moving surrounding content")
-        except Exception as e:QMessageBox.warning(self,"Replacement not applied",str(e))
-    def add_text_at(self,event):
-        if self.tool!='add':return
-        pos=self.view.mapToScene(event.position().toPoint());d=AddTextDialog(self)
-        if d.exec()==QDialog.Accepted and d.text.text().strip():engine.add_text(self.doc,self.page,(pos.x()/self.scale,pos.y()/self.scale),d.text.text(),d.size.value());self.dirty=True;self.refresh_after_edit("New text added")
-    def add_image(self):
-        if not self.doc:return
-        path,_=QFileDialog.getOpenFileName(self,"Choose image or signature","","Images (*.png *.jpg *.jpeg)")
-        if not path:return
-        page=self.doc[self.page];engine.add_image(self.doc,self.page,path,(36,36,min(236,page.rect.width-20),min(156,page.rect.height-20)));self.dirty=True;self.refresh_after_edit("Image added at top-left; precise placement is planned")
-    def rotate_page(self):
-        if self.doc:engine.rotate_pages(self.doc,[self.page],90);self.dirty=True;self.refresh_after_edit("Page rotated")
-    def delete_page(self):
-        if not self.doc:return
-        if QMessageBox.question(self,"Delete page",f"Delete page {self.page+1}?")!=QMessageBox.Yes:return
-        try:engine.delete_pages(self.doc,[self.page]);self.page=min(self.page,self.doc.page_count-1);self.populate_thumbs();self.thumbs.setCurrentRow(self.page);self.dirty=True;self.render()
-        except Exception as e:QMessageBox.warning(self,"Cannot delete",str(e))
-    def merge_files(self):
-        paths,_=QFileDialog.getOpenFileNames(self,"Choose PDFs to merge","","PDF files (*.pdf)")
-        if len(paths)<2:return
-        out,_=QFileDialog.getSaveFileName(self,"Save merged PDF","merged.pdf","PDF files (*.pdf)")
-        if out:engine.merge_paths(paths,out);QMessageBox.information(self,"Merge complete",f"Saved to\n{out}")
-    def save_as(self):
-        if not self.doc:return
-        out,_=QFileDialog.getSaveFileName(self,"Save edited PDF",str(Path(self.path).with_name(Path(self.path).stem+'-edited.pdf')),"PDF files (*.pdf)")
-        if out:
-            try:engine.save_copy(self.doc,out);self.dirty=False;QMessageBox.information(self,"Saved",f"Saved to\n{out}")
-            except Exception as e:QMessageBox.critical(self,"Save failed",str(e))
-    def reload_document(self):
-        if self.path and QMessageBox.question(self,"Discard edits","Reload the original PDF and discard unsaved edits?")==QMessageBox.Yes:self.load_path(self.path)
-    def refresh_after_edit(self,msg):self.render();self.populate_thumbs();self.thumbs.setCurrentRow(self.page);self.statusBar().showMessage(msg)
-    def fit_page(self):
-        if not self.doc:return
-        r=self.doc[self.page].rect;vw=max(200,self.view.viewport().width()-30);vh=max(200,self.view.viewport().height()-30);self.set_zoom(min(vw/r.width,vh/r.height))
-    def set_zoom(self,z):self.scale=max(.3,min(3,z));self.render()
-    def closeEvent(self,e):
-        if self.dirty and QMessageBox.question(self,"Unsaved edits","Close without saving?")!=QMessageBox.Yes:e.ignore();return
-        if self.doc:self.doc.close();e.accept()
+class Main(QMainWindow):
+ def __init__(self):
+  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.1.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[]
+  self.build_toolbar();self.build_ui();self.setStatusBar(QStatusBar());self.statusBar().showMessage('Open a PDF to begin')
+ def action(self,bar,name,key,fn):
+  a=QAction(name,self);a.setShortcut(QKeySequence(key));a.triggered.connect(fn);bar.addAction(a);return a
+ def build_toolbar(self):
+  b=QToolBar();b.setMovable(False);self.addToolBar(b);self.action(b,'Open','Ctrl+O',self.open);self.action(b,'Save As','Ctrl+Shift+S',self.save);b.addSeparator();self.undo_action=self.action(b,'Undo','Ctrl+Z',self.undo);self.redo_action=self.action(b,'Redo','Ctrl+Y',self.redo);b.addSeparator();self.action(b,'Zoom Out','Ctrl+-',lambda:self.set_zoom(self.zoom-.15));self.action(b,'Zoom In','Ctrl++',lambda:self.set_zoom(self.zoom+.15));self.action(b,'Fit Page','Ctrl+0',self.fit);self.action(b,'100%','Ctrl+1',lambda:self.set_zoom(1.0));b.addSeparator();self.title=QLabel('No document open');b.addWidget(self.title);self.update_history()
+ def build_ui(self):
+  root=QSplitter();self.setCentralWidget(root)
+  tools=QWidget();tools.setFixedWidth(220);v=QVBoxLayout(tools);head=QLabel('TOOLS');head.setStyleSheet('font-weight:700');v.addWidget(head)
+  for label,fn in [('Edit existing text',self.edit_mode),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
+   btn=QPushButton(label);btn.clicked.connect(fn);v.addWidget(btn)
+  v.addStretch();hint=QLabel('Existing text: double-click the exact text. PeaBox preserves its size and rejects replacements that do not fit.');hint.setWordWrap(True);hint.setObjectName('hint');v.addWidget(hint);root.addWidget(tools)
+  self.thumbs=QListWidget();self.thumbs.setFixedWidth(180);self.thumbs.currentRowChanged.connect(self.goto);root.addWidget(self.thumbs)
+  center=QWidget();cv=QVBoxLayout(center);cv.setContentsMargins(0,0,0,0);nav=QHBoxLayout();self.prev=QPushButton('Previous');self.next=QPushButton('Next');self.page_label=QLabel('Page 0 of 0');self.zoom_label=QLabel('100%');self.prev.clicked.connect(lambda:self.goto(max(0,self.page-1)));self.next.clicked.connect(lambda:self.goto(min(self.doc.page_count-1,self.page+1)) if self.doc else None)
+  for w in (self.prev,self.next,self.page_label,self.zoom_label):nav.addWidget(w)
+  nav.addStretch();cv.addLayout(nav);self.scene=QGraphicsScene();self.view=QGraphicsView(self.scene);self.view.setDragMode(QGraphicsView.ScrollHandDrag);cv.addWidget(self.view);root.addWidget(center);root.setStretchFactor(2,1)
+  side=QWidget();side.setFixedWidth(270);sv=QVBoxLayout(side);g=QGroupBox('Document');gl=QVBoxLayout(g);self.info=QLabel('Open a PDF to see details.');self.info.setWordWrap(True);gl.addWidget(self.info);sv.addWidget(g);g2=QGroupBox('Editing model');g2l=QVBoxLayout(g2);m=QLabel('Short corrections are safest. Existing text keeps its detected size, baseline and colour. Long replacements are rejected rather than squeezed into the page.');m.setWordWrap(True);g2l.addWidget(m);sv.addWidget(g2);sv.addStretch();root.addWidget(side)
+ def open(self):
+  p,_=QFileDialog.getOpenFileName(self,'Open PDF','','PDF files (*.pdf)')
+  if p:self.load(p)
+ def load(self,p):
+  try:
+   if self.doc:self.doc.close()
+   self.doc=engine.open_document(p);self.path=p;self.page=0;self.dirty=False;self.undo_stack=[];self.redo_stack=[];self.title.setText(Path(p).name);self.refresh_thumbs();self.thumbs.setCurrentRow(0);self.fit();self.update_history()
+  except Exception as e:QMessageBox.critical(self,'Cannot open PDF',str(e))
+ def snapshot(self):
+  if not self.doc:return
+  self.undo_stack.append(self.doc.tobytes(garbage=4,deflate=True));self.undo_stack=self.undo_stack[-20:];self.redo_stack.clear();self.update_history()
+ def restore(self,data):
+  if self.doc:self.doc.close()
+  self.doc=pymupdf.open(stream=data,filetype='pdf');self.page=min(self.page,self.doc.page_count-1);self.refresh_thumbs();self.thumbs.setCurrentRow(self.page);self.render()
+ def undo(self):
+  if not self.undo_stack or not self.doc:return
+  self.redo_stack.append(self.doc.tobytes(garbage=4,deflate=True));self.restore(self.undo_stack.pop());self.dirty=True;self.update_history();self.statusBar().showMessage('Undo complete')
+ def redo(self):
+  if not self.redo_stack or not self.doc:return
+  self.undo_stack.append(self.doc.tobytes(garbage=4,deflate=True));self.restore(self.redo_stack.pop());self.dirty=True;self.update_history();self.statusBar().showMessage('Redo complete')
+ def update_history(self):
+  if hasattr(self,'undo_action'):self.undo_action.setEnabled(bool(self.undo_stack));self.redo_action.setEnabled(bool(self.redo_stack))
+ def refresh_thumbs(self):
+  self.thumbs.blockSignals(True);self.thumbs.clear()
+  for i in range(self.doc.page_count):
+   data,_,_=engine.render_page(self.doc,i,.18);item=QListWidgetItem(QIcon(QPixmap.fromImage(QImage.fromData(data))),f'Page {i+1}');item.setSizeHint(item.sizeHint()*1.35);self.thumbs.addItem(item)
+  self.thumbs.blockSignals(False)
+ def render(self):
+  if not self.doc:return
+  data,w,h=engine.render_page(self.doc,self.page,self.zoom);self.scene.clear();self.scene.setSceneRect(0,0,w,h);self.scene.addPixmap(QPixmap.fromImage(QImage.fromData(data)))
+  for s in engine.text_spans(self.doc[self.page]):self.scene.addItem(SpanItem(s,self.replace,self.zoom))
+  self.page_label.setText(f'Page {self.page+1} of {self.doc.page_count}');self.zoom_label.setText(f'{round(self.zoom*100)}%');self.info.setText(f'{Path(self.path).name}\n\nPages: {self.doc.page_count}\nCurrent page: {self.page+1}\nZoom: {round(self.zoom*100)}%')
+ def goto(self,i):
+  if self.doc and 0<=i<self.doc.page_count:self.page=i
+  if self.doc and self.thumbs.currentRow()!=i:self.thumbs.blockSignals(True);self.thumbs.setCurrentRow(i);self.thumbs.blockSignals(False)
+  if self.doc:self.render()
+ def edit_mode(self):self.statusBar().showMessage('Double-click the exact existing text you want to correct')
+ def replace(self,s):
+  d=TextDialog('Replace existing text',s['text'],s['size'],self,True)
+  if d.exec()!=QDialog.Accepted:return
+  self.snapshot()
+  try:size=engine.replace_span(self.doc,self.page,s,d.text.text());self.changed(f'Text replaced at original {size:.1f} pt size')
+  except Exception as e:self.undo_stack.pop();self.update_history();QMessageBox.warning(self,'Text not changed',str(e))
+ def add_text(self):
+  if not self.doc:return
+  d=TextDialog('Add new text','',14,self,False)
+  if d.exec()!=QDialog.Accepted or not d.text.text().strip():return
+  self.snapshot();r=self.doc[self.page].rect;engine.add_text(self.doc,self.page,(r.width*.35,r.height*.5),d.text.text(),d.size.value());self.changed('New text added near page centre')
+ def add_image(self):
+  if not self.doc:return
+  d=ImageDialog(self.doc[self.page],self)
+  if d.exec()!=QDialog.Accepted:return
+  self.snapshot();engine.add_image(self.doc,self.page,d.path,(d.x.value(),d.y.value(),d.x.value()+d.w.value(),d.y.value()+d.h.value()));self.changed('Image or signature added')
+ def rotate(self):
+  if self.doc:self.snapshot();engine.rotate_pages(self.doc,[self.page],90);self.changed('Page rotated')
+ def delete(self):
+  if not self.doc:return
+  if QMessageBox.question(self,'Delete page',f'Delete page {self.page+1}?')!=QMessageBox.Yes:return
+  self.snapshot()
+  try:engine.delete_pages(self.doc,[self.page]);self.page=min(self.page,self.doc.page_count-1);self.changed('Page deleted')
+  except Exception as e:self.undo_stack.pop();self.update_history();QMessageBox.warning(self,'Cannot delete page',str(e))
+ def merge(self):
+  paths,_=QFileDialog.getOpenFileNames(self,'Choose PDFs to merge','','PDF files (*.pdf)')
+  if len(paths)<2:return
+  out,_=QFileDialog.getSaveFileName(self,'Save merged PDF','merged.pdf','PDF files (*.pdf)')
+  if out:engine.merge_paths(paths,out);QMessageBox.information(self,'Merge complete',f'Saved to\n{out}')
+ def changed(self,msg):
+  self.dirty=True;self.refresh_thumbs();self.thumbs.setCurrentRow(self.page);self.render();self.update_history();self.statusBar().showMessage(msg)
+ def fit(self):
+  if not self.doc:return
+  r=self.doc[self.page].rect;self.set_zoom(min((self.view.viewport().width()-34)/r.width,(self.view.viewport().height()-34)/r.height))
+ def set_zoom(self,z):
+  self.zoom=max(.25,min(4.0,z));self.render()
+ def save(self):
+  if not self.doc:return
+  p,_=QFileDialog.getSaveFileName(self,'Save edited PDF',str(Path(self.path).with_name(Path(self.path).stem+'-edited.pdf')),'PDF files (*.pdf)')
+  if p:
+   try:engine.save_copy(self.doc,p);self.dirty=False;QMessageBox.information(self,'Saved',f'Saved to\n{p}')
+   except Exception as e:QMessageBox.critical(self,'Save failed',str(e))
+ def closeEvent(self,e):
+  if self.dirty and QMessageBox.question(self,'Unsaved changes','Close without saving?')!=QMessageBox.Yes:e.ignore();return
+  if self.doc:self.doc.close()
+  e.accept()
 
 def main():
-    app=QApplication(sys.argv);app.setStyleSheet(STYLE);w=MainWindow();w.show();sys.exit(app.exec())
+ app=QApplication(sys.argv);app.setApplicationName('PeaBox PDF Studio');app.setStyleSheet(STYLE);w=Main();w.show();sys.exit(app.exec())
 if __name__=='__main__':main()
