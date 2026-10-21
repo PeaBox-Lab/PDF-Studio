@@ -18,3 +18,5 @@ def test_annotations_and_redaction():
  e.annotate_span(d,0,s,'underline');e.annotate_span(d,0,s,'strikeout');e.add_comment(d,0,(20,20),'Review note');assert d[0].first_annot is not None;d.close();os.remove(p)
 def test_permanent_redaction():
  p=make();d=e.open_document(p);s=e.text_spans(d[0])[0];e.annotate_span(d,0,s,'redact');assert 'Hello world' not in d[0].get_text();d.close();os.remove(p)
+def test_native_search_and_ocr_detection_heuristic():
+ p=make();d=e.open_document(p);assert len(e.search_page(d[0],'Hello'))==1;assert e.page_needs_ocr(d[0]) is False;d.close();os.remove(p)

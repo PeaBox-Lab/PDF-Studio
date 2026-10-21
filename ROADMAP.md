@@ -1,12 +1,15 @@
 # Roadmap
 
-## v1.4
-- OCR detection and OCR-assisted search for scanned PDFs
-- OCR text selection and correction workflow
-
 ## v1.5
-- Watermark, metadata, page-numbering, header/footer and document security tools
+- Watermarks
+- Metadata editor
+- Header/footer and page numbering
+- PDF password/encryption tools
+- Document information panel
 
 ## v1.6
-- Visual drag and resize handles for new text, images and signatures
-- Freehand ink, arrows, lines and shapes
+- Visual move/resize handles for images, signatures and new text
+- Freehand ink, lines, arrows and shapes
+
+## v1.7
+- OCR-assisted scanned-text correction with image-region cleanup/inpainting safeguards

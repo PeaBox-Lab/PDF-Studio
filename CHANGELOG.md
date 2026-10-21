@@ -1,19 +1,23 @@
 # Changelog
 
+## v1.4.0
+- Added scanned-page detection heuristic
+- Added Tesseract-backed OCR for the current page through PyMuPDF
+- Added per-page in-session OCR caching
+- Added Find for native PDF text
+- Added Find against OCR text on OCR-processed pages
+- Added visual search highlights
+- Added Ctrl+F and Ctrl+Shift+O shortcuts
+- Kept OCR text read/search-only to avoid unsafe modification of scanned-image pixels
+
 ## v1.3.0
-- Added text highlighting
-- Added text underlining
-- Added text strikeout
-- Added permanent text redaction with confirmation
-- Added sticky-note page comments
-- Added mode-specific status guidance
-- Annotation and redaction operations support Undo/Redo
+- Added highlight, underline, strikeout, comments and permanent redaction
 
 ## v1.2.0
-- Added drag-and-drop page reordering, extraction, duplication, blank pages and PDF insertion
+- Added advanced page management
 
 ## v1.1.0
 - Added Undo/Redo and zoom controls
 
 ## v1.0.1
-- Preserved original text size and rejected oversized replacement text
+- Preserved existing text size and rejected oversized replacements

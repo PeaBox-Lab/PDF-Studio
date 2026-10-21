@@ -41,16 +41,16 @@ class ImageDialog(QDialog):
 
 class Main(QMainWindow):
  def __init__(self):
-  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.3.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[];self.mode='edit'
+  super().__init__();self.setWindowTitle('PeaBox PDF Studio Desktop v1.4.0');self.resize(1460,900);self.doc=None;self.path=None;self.page=0;self.zoom=1.25;self.dirty=False;self.undo_stack=[];self.redo_stack=[];self.mode='edit';self.ocr_cache={};self.search_rects=[]
   self.build_toolbar();self.build_ui();self.setStatusBar(QStatusBar());self.statusBar().showMessage('Open a PDF to begin')
  def action(self,bar,name,key,fn):
   a=QAction(name,self);a.setShortcut(QKeySequence(key));a.triggered.connect(fn);bar.addAction(a);return a
  def build_toolbar(self):
-  b=QToolBar();b.setMovable(False);self.addToolBar(b);self.action(b,'Open','Ctrl+O',self.open);self.action(b,'Save As','Ctrl+Shift+S',self.save);b.addSeparator();self.undo_action=self.action(b,'Undo','Ctrl+Z',self.undo);self.redo_action=self.action(b,'Redo','Ctrl+Y',self.redo);b.addSeparator();self.action(b,'Zoom Out','Ctrl+-',lambda:self.set_zoom(self.zoom-.15));self.action(b,'Zoom In','Ctrl++',lambda:self.set_zoom(self.zoom+.15));self.action(b,'Fit Page','Ctrl+0',self.fit);self.action(b,'100%','Ctrl+1',lambda:self.set_zoom(1.0));b.addSeparator();self.title=QLabel('No document open');b.addWidget(self.title);self.update_history()
+  b=QToolBar();b.setMovable(False);self.addToolBar(b);self.action(b,'Open','Ctrl+O',self.open);self.action(b,'Save As','Ctrl+Shift+S',self.save);b.addSeparator();self.undo_action=self.action(b,'Undo','Ctrl+Z',self.undo);self.redo_action=self.action(b,'Redo','Ctrl+Y',self.redo);b.addSeparator();self.action(b,'Zoom Out','Ctrl+-',lambda:self.set_zoom(self.zoom-.15));self.action(b,'Zoom In','Ctrl++',lambda:self.set_zoom(self.zoom+.15));self.action(b,'Fit Page','Ctrl+0',self.fit);self.action(b,'100%','Ctrl+1',lambda:self.set_zoom(1.0));b.addSeparator();self.action(b,'Find','Ctrl+F',self.find_text);self.action(b,'OCR Page','Ctrl+Shift+O',self.run_ocr);b.addSeparator();self.title=QLabel('No document open');b.addWidget(self.title);self.update_history()
  def build_ui(self):
   root=QSplitter();self.setCentralWidget(root)
   tools=QWidget();tools.setFixedWidth(220);v=QVBoxLayout(tools);head=QLabel('TOOLS');head.setStyleSheet('font-weight:700');v.addWidget(head)
-  for label,fn in [('Edit existing text',lambda:self.set_mode('edit')),('Highlight text',lambda:self.set_mode('highlight')),('Underline text',lambda:self.set_mode('underline')),('Strike out text',lambda:self.set_mode('strikeout')),('Permanently redact text',lambda:self.set_mode('redact')),('Add comment to page',self.add_comment),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Duplicate current page',self.duplicate),('Extract selected pages',self.extract),('Insert blank page',self.blank),('Insert PDF after page',self.insert_pdf),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
+  for label,fn in [('Edit existing text',lambda:self.set_mode('edit')),('Highlight text',lambda:self.set_mode('highlight')),('Underline text',lambda:self.set_mode('underline')),('Strike out text',lambda:self.set_mode('strikeout')),('Permanently redact text',lambda:self.set_mode('redact')),('Add comment to page',self.add_comment),('OCR current page',self.run_ocr),('Find text',self.find_text),('Add new text',self.add_text),('Add image or signature',self.add_image),('Rotate current page',self.rotate),('Duplicate current page',self.duplicate),('Extract selected pages',self.extract),('Insert blank page',self.blank),('Insert PDF after page',self.insert_pdf),('Delete current page',self.delete),('Merge PDF files',self.merge)]:
    btn=QPushButton(label);btn.clicked.connect(fn);v.addWidget(btn)
   v.addStretch();hint=QLabel('Existing text: double-click the exact text. PeaBox preserves its size and rejects replacements that do not fit.');hint.setWordWrap(True);hint.setObjectName('hint');v.addWidget(hint);root.addWidget(tools)
   self.thumbs=QListWidget();self.thumbs.setFixedWidth(190);self.thumbs.setSelectionMode(QAbstractItemView.ExtendedSelection);self.thumbs.setDragDropMode(QAbstractItemView.InternalMove);self.thumbs.setDefaultDropAction(Qt.MoveAction);self.thumbs.currentRowChanged.connect(self.goto);self.thumbs.model().rowsMoved.connect(self.pages_reordered);root.addWidget(self.thumbs)
@@ -64,7 +64,7 @@ class Main(QMainWindow):
  def load(self,p):
   try:
    if self.doc:self.doc.close()
-   self.doc=engine.open_document(p);self.path=p;self.page=0;self.dirty=False;self.undo_stack=[];self.redo_stack=[];self.title.setText(Path(p).name);self.refresh_thumbs();self.thumbs.setCurrentRow(0);self.fit();self.update_history()
+   self.doc=engine.open_document(p);self.path=p;self.page=0;self.dirty=False;self.undo_stack=[];self.redo_stack=[];self.ocr_cache={};self.search_rects=[];self.title.setText(Path(p).name);self.refresh_thumbs();self.thumbs.setCurrentRow(0);self.fit();self.update_history()
   except Exception as e:QMessageBox.critical(self,'Cannot open PDF',str(e))
  def snapshot(self):
   if not self.doc:return
@@ -88,12 +88,31 @@ class Main(QMainWindow):
  def render(self):
   if not self.doc:return
   data,w,h=engine.render_page(self.doc,self.page,self.zoom);self.scene.clear();self.scene.setSceneRect(0,0,w,h);self.scene.addPixmap(QPixmap.fromImage(QImage.fromData(data)))
+  for rect in self.search_rects:
+   x0,y0,x1,y1=rect;hit=QGraphicsRectItem(QRectF(x0*self.zoom,y0*self.zoom,(x1-x0)*self.zoom,(y1-y0)*self.zoom));hit.setPen(QPen(QColor('#ff8a00'),2));hit.setBrush(QColor(255,210,0,55));hit.setZValue(4);self.scene.addItem(hit)
   for s in engine.text_spans(self.doc[self.page]):self.scene.addItem(SpanItem(s,self.activate_span,self.zoom))
-  self.page_label.setText(f'Page {self.page+1} of {self.doc.page_count}');self.zoom_label.setText(f'{round(self.zoom*100)}%');self.info.setText(f'{Path(self.path).name}\n\nPages: {self.doc.page_count}\nCurrent page: {self.page+1}\nZoom: {round(self.zoom*100)}%\nMode: {self.mode.capitalize()}')
+  self.page_label.setText(f'Page {self.page+1} of {self.doc.page_count}');self.zoom_label.setText(f'{round(self.zoom*100)}%');ocr_state='OCR likely useful' if engine.page_needs_ocr(self.doc[self.page]) else 'Native text detected';self.info.setText(f'{Path(self.path).name}\n\nPages: {self.doc.page_count}\nCurrent page: {self.page+1}\nZoom: {round(self.zoom*100)}%\nMode: {self.mode.capitalize()}\nText: {ocr_state}')
  def goto(self,i):
-  if self.doc and 0<=i<self.doc.page_count:self.page=i
+  if self.doc and 0<=i<self.doc.page_count:self.page=i;self.search_rects=[]
   if self.doc and self.thumbs.currentRow()!=i:self.thumbs.blockSignals(True);self.thumbs.setCurrentRow(i);self.thumbs.blockSignals(False)
   if self.doc:self.render()
+ def run_ocr(self):
+  if not self.doc:return
+  lang,ok=QInputDialog.getText(self,'OCR current page','Tesseract language code:',QLineEdit.Normal,'eng')
+  if not ok:return
+  QApplication.setOverrideCursor(Qt.WaitCursor)
+  try:
+   words=engine.ocr_words(self.doc[self.page],lang or 'eng',200);text=engine.ocr_text(self.doc[self.page],lang or 'eng',200);self.ocr_cache[self.page]={'language':lang or 'eng','words':words,'text':text};self.statusBar().showMessage(f'OCR recognized {len(words)} words on page {self.page+1}');QMessageBox.information(self,'OCR complete',f'Recognized {len(words)} words. OCR text is now available to Find on this page.')
+  except Exception as e:QMessageBox.warning(self,'OCR unavailable',str(e))
+  finally:QApplication.restoreOverrideCursor()
+ def find_text(self):
+  if not self.doc:return
+  q,ok=QInputDialog.getText(self,'Find text','Text to find:')
+  if not ok or not q.strip():return
+  use_ocr=self.page in self.ocr_cache
+  lang=self.ocr_cache.get(self.page,{}).get('language','eng')
+  try:self.search_rects=engine.search_page(self.doc[self.page],q,use_ocr,lang,200);self.render();self.statusBar().showMessage(f'Found {len(self.search_rects)} match(es) on page {self.page+1}'+(' using OCR' if use_ocr else ''))
+  except Exception as e:QMessageBox.warning(self,'Search failed',str(e))
  def set_mode(self,mode):
   self.mode=mode
   labels={'edit':'Double-click existing text to edit','highlight':'Double-click text to highlight','underline':'Double-click text to underline','strikeout':'Double-click text to strike out','redact':'Double-click text to permanently redact'}

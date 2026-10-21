@@ -94,3 +94,28 @@ def add_comment(doc,page_index,point,text):
 
 def add_rectangle(doc,page_index,rect,color=(0.1,0.35,0.9),width=1.5):
  annot=doc[page_index].add_rect_annot(pymupdf.Rect(*rect));annot.set_colors(stroke=color);annot.set_border(width=width);annot.update();return annot
+
+def page_needs_ocr(page):
+ text=page.get_text('text').strip()
+ images=page.get_images(full=True)
+ return len(text)<8 and bool(images)
+
+def ocr_words(page,language='eng',dpi=200):
+ try:
+  tp=page.get_textpage_ocr(language=language,dpi=dpi,full=True)
+ except Exception as exc:
+  raise RuntimeError('OCR is unavailable. Install Tesseract OCR and ensure its tessdata language files are discoverable. Details: '+str(exc)) from exc
+ words=page.get_text('words',textpage=tp,sort=True)
+ return [{'x0':w[0],'y0':w[1],'x1':w[2],'y1':w[3],'text':w[4]} for w in words if str(w[4]).strip()]
+
+def ocr_text(page,language='eng',dpi=200):
+ try:tp=page.get_textpage_ocr(language=language,dpi=dpi,full=True)
+ except Exception as exc:raise RuntimeError('OCR is unavailable. Install Tesseract OCR and ensure its tessdata language files are discoverable. Details: '+str(exc)) from exc
+ return page.get_text('text',textpage=tp,sort=True)
+
+def search_page(page,query,ocr=False,language='eng',dpi=200):
+ if not query.strip():return []
+ if not ocr:return [tuple(r) for r in page.search_for(query)]
+ try:tp=page.get_textpage_ocr(language=language,dpi=dpi,full=True)
+ except Exception as exc:raise RuntimeError('OCR is unavailable. Install Tesseract OCR and ensure its tessdata language files are discoverable. Details: '+str(exc)) from exc
+ return [tuple(r) for r in page.search_for(query,textpage=tp)]

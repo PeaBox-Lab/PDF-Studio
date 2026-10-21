@@ -1,45 +1,45 @@
-# PeaBox PDF Studio Desktop v1.3.0
+# PeaBox PDF Studio Desktop v1.4.0
 
-A local-first native PDF editor and annotation workspace built with Python, PySide6 and PyMuPDF.
+A local-first native PDF editor, page organizer, annotation workspace, and OCR-assisted PDF reader built with Python, PySide6 and PyMuPDF.
 
-## v1.3 highlights
+## New in v1.4
 
-### Review and annotation tools
-- Highlight detected PDF text
-- Underline detected PDF text
-- Strike out detected PDF text
-- Permanently redact selected text
-- Add a sticky-note comment to the current page
-- Every annotation or redaction participates in Undo/Redo
+- Detects pages that appear to be image/scanned pages
+- OCR Current Page command
+- OCR word recognition through PyMuPDF's Tesseract integration
+- Find text on native PDF pages
+- Find text against OCR results on an OCR-processed page
+- Visual orange search-result highlights
+- OCR result caching per page during the current session
+- `Ctrl+F` Find
+- `Ctrl+Shift+O` OCR Current Page
 
-### How to annotate
-1. Open a PDF.
-2. Choose **Highlight text**, **Underline text**, **Strike out text**, or **Permanently redact text**.
-3. Hover over the exact text span.
-4. Double-click the text.
-5. Save the edited PDF with `Ctrl+Shift+S`.
+## OCR requirement
 
-Redaction is permanent after saving. PeaBox asks for confirmation and removes the selected text content instead of merely drawing a black rectangle over it.
+PyMuPDF's integrated OCR uses Tesseract. Install Tesseract OCR separately on the computer. On Windows, make sure Tesseract's `tessdata` language-data directory is available to PyMuPDF. English uses the language code `eng`.
+
+OCR is intentionally run page-by-page because OCR is substantially slower than native PDF text extraction. Once OCR has been completed for a page, PeaBox reuses that page's OCR context during the session.
+
+## Using OCR
+
+1. Open a scanned PDF.
+2. Navigate to the scanned page.
+3. Choose **OCR current page** or press `Ctrl+Shift+O`.
+4. Enter the Tesseract language code, such as `eng`.
+5. Wait for recognition to complete.
+6. Press `Ctrl+F` and search the recognized text.
+
+OCR recognition does not reconstruct the original fonts. It is primarily used for reading and search in v1.4. Direct OCR-text replacement remains a future workflow because blindly replacing text on an image scan would not remove the pixels of the original scanned text safely.
 
 ## Existing features
-- Existing-text correction without automatic font shrinking
-- Add new text, images and signature images
+
+- Existing native-PDF text correction with preserved text size
+- Highlight, underline and strikeout
+- Permanent redaction
+- Sticky-note comments
+- Add new text, image and signature images
 - 20-step Undo/Redo
-- Fit Page, 100%, Zoom In and Zoom Out
-- Page thumbnails and drag-and-drop reordering
-- Duplicate, extract, delete, rotate and insert pages
-- Insert blank pages and complete PDFs
-- Merge PDF files
-
-## Installation
-
-Extract the ZIP and double-click `run_windows.bat`.
-
-Manual installation:
-
-```bat
-python -m venv .venv
-.venv\Scripts\activate
-python -m pip install -r requirements.txt
-python app.py
-```
+- Zoom, Fit Page and 100%
+- Drag-and-drop page reordering
+- Extract, duplicate, insert, rotate and delete pages
+- Merge PDFs
