@@ -1,45 +1,30 @@
-# PeaBox PDF Studio v0.5.0
+# PeaBox PDF Studio Desktop v1.0.0
 
-A visual, local-first PDF editor with a FastAPI/PyMuPDF backend and a responsive browser workspace.
+A Windows-friendly local desktop PDF editor. This is a clean break from the earlier browser UI.
 
-## What changed
-v0.3 replaces form-driven coordinate entry with a direct-manipulation editor. Existing text blocks are detected automatically. Click a block to replace it, edit in place, move objects visually, and use a contextual property panel.
+## Why desktop
+- Native scrolling, dialogs, menus, keyboard shortcuts, and high-DPI handling
+- No local web server or browser zoom complications
+- Explicit labeled tools instead of unexplained icons
+- PDF page remains central
+- Safer existing-text correction workflow
 
-## Features
-- Visual page canvas with zoom and navigation
-- Click detected text to replace it
-- In-place text editing with font size and colour
-- Add draggable text boxes by double-clicking the page
-- Add images and signature images visually
-- Highlights and permanent black redactions
-- Undo/redo before commit
-- Commit edits and continue editing
-- Download without committing
-- Delete pages and reverse page order
+## Safe text editing
+Double-click an existing text span. PeaBox removes only that exact rectangle and inserts a replacement that must fit the same area. If the replacement is too long, the operation is rejected instead of reflowing or damaging surrounding layout.
+
+## Working features
+- Native PDF viewing with thumbnails
+- Fit Page and 100% zoom
+- Existing-text correction by double-click
+- Add new text by double-click in Add Text mode
+- Add an image/signature
+- Rotate and delete pages
 - Merge PDFs
-- Password-protected PDF opening
-- Local temporary in-memory document handling
+- Save As, reload original, keyboard shortcuts
+- Unsaved-changes warning
 
 ## Run on Windows
-Double-click `run_windows.bat`, then open http://127.0.0.1:8000.
+Extract the ZIP and double-click `run_windows.bat`.
 
-## Manual run
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# Linux/macOS: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app:app --reload
-```
-
-## Important PDF reality
-The editor replaces a selected text region by removing its PDF content and writing replacement text into the same rectangle. This is genuine region-level PDF editing, but PDF has no paragraph reflow model. Long replacement text must fit the original region or the user should enlarge the box.
-
-
-## Windows launcher note
-The v0.5.0 launcher deliberately starts Uvicorn with `python -m uvicorn` instead of relying on a `uvicorn.exe` command being present on Windows PATH. This supports locked-down/user-level Python installations where packages are installed under the user profile.
-
-Alternative start command:
-```bat
-py -3 -m uvicorn app:app --host 127.0.0.1 --port 8000
-```
+## Notes
+This release intentionally prioritizes predictable correction of short text, names, dates, labels, and amounts. PDF is fixed-layout. It is not safe to offer Word-like paragraph reflow without reconstructing the page.
