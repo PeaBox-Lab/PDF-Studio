@@ -1,27 +1,13 @@
-# PeaBox PDF Studio v0.1.0
+# PeaBox PDF Studio Desktop v1.5.0
 
-A local-first web PDF editor utility built with Python and Streamlit.
+A local-first PDF utility focused on document labeling, metadata and protected exports.
 
-## Features
-- Upload and preview PDF documents
-- Merge multiple PDFs
-- Split/extract page ranges such as `1-3,5,8`
-- Add text to a selected page
-- Add PNG/JPG images
-- Add a drawn-looking signature image (PNG/JPG)
-- Rotate selected pages
-- Download the edited PDF
+## New in v1.5
+- Edit Title, Author, Subject and Keywords metadata
+- Add text watermarks across all pages
+- Add headers and footers
+- Add page numbers with custom starting number
+- Export an AES-256 protected copy with owner and optional open password
 
 ## Install
-```bash
-python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# Linux/macOS: source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-Then open the local URL shown by Streamlit, normally http://localhost:8501.
-
-## Notes
-This MVP performs PDF page manipulation and overlays. It does not directly rewrite arbitrary existing paragraph text in a PDF. Scanned-document OCR and true content editing are future enhancements.
+Extract the ZIP and run `run_windows.bat`.
