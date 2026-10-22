@@ -1,6 +1,6 @@
 # PeaBox PDF Studio v0.1.0
 
-A local-first web PDF utility built with Python and Streamlit.
+A local-first web PDF editor utility built with Python and Streamlit.
 
 ## Features
 - Upload and preview PDF documents
